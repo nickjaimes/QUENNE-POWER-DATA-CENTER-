@@ -1,0 +1,2159 @@
+COMPREHENSIVE TECHNICAL IMPLEMENTATION GUIDE
+
+QUENNE (Quantum Edge Neuromorphic Engine) v2.1
+
+---
+
+PART 1: PRE-DEPLOYMENT PREPARATION
+
+1.1 Infrastructure Assessment Protocol
+
+Assessment Matrix
+
+```python
+# Infrastructure Assessment Tool
+def assess_data_center():
+    assessment = {
+        "power_infrastructure": {
+            "metering_level": "PDU/Server/Rail",  # Required: Server-level minimum
+            "monitoring_protocols": ["MODBUS", "BACnet", "Redfish"],
+            "ups_capability": "Static Bypass/Rotary",
+            "generator_capacity": "N+1, N+2",
+            "grid_connection": ["Dual Feed", "Demand Response Capable"]
+        },
+        "cooling_infrastructure": {
+            "crac_units": "Variable Speed/EC Fans",
+            "chilled_water": "Variable Primary/Secondary",
+            "economizer": ["Air-side", "Water-side"],
+            "containment": ["Hot/Cold Aisle", "None"]
+        },
+        "compute_infrastructure": {
+            "server_age_distribution": "0-5 years optimal",
+            "bmc_capabilities": ["IPMI", "Redfish", "No BMC"],
+            "virtualization": ["VMware", "KVM", "Bare Metal"],
+            "orchestration": ["Kubernetes", "OpenStack", "None"]
+        },
+        "network_infrastructure": {
+            "management_network": "10GbE minimum",
+            "out_of_band": "Separate physical network",
+            "time_sync": ["NTP", "PTP Available"]
+        }
+    }
+    return calculate_quenne_readiness_score(assessment)
+
+# Readiness Scoring Algorithm
+def calculate_quenne_readiness_score(assessment):
+    score = 0
+    weights = {
+        "server_level_power_metering": 0.25,
+        "variable_speed_cooling": 0.20,
+        "modern_bmc": 0.15,
+        "network_capabilities": 0.20,
+        "orchestration_present": 0.20
+    }
+    
+    if assessment["power_infrastructure"]["metering_level"] == "Rail":
+        score += weights["server_level_power_metering"]
+    
+    # Continue scoring logic...
+    
+    return {"score": score, "recommendations": generate_upgrade_path(score)}
+```
+
+Site-Specific Configuration Generator
+
+```yaml
+# Configuration Template Generator
+apiVersion: quenne.io/v1
+kind: SiteConfiguration
+metadata:
+  name: dc-us-west-1a
+spec:
+  deploymentStrategy: "progressive-rollout"
+  phases:
+    - phase: "instrumentation"
+      priorityZones: ["critical-workload-racks"]
+      timeline: "weeks 1-4"
+    - phase: "edge-deployment"
+      racksPerDay: 2
+      validationProcedure: "A-B testing"
+      
+  hardwareRequirements:
+    sensorsPerRack: 24
+    edgeNodes:
+      type: "neuromorphic-hybrid"
+      powerRequirement: "PoE++ (802.3bt)"
+      networkPorts: 
+        - data: "10GbE SFP+"
+        - management: "1GbE RJ45"
+        - backup: "Wi-Fi 6E"
+    
+  networkDesign:
+    managementVlan: 100
+    sensorVlan: 200
+    controlVlan: 300
+    segmentation: "micro-per-rack"
+```
+
+1.2 Network Architecture Implementation
+
+Time-Sensitive Networking (TSN) Configuration
+
+```cisco
+! Core TSN Switch Configuration (Cisco Nexus 9300)
+tsn
+  domain 1
+    admin-state enabled
+    cos 5
+  schedule
+    entry 1
+      gate-states 0xFF
+      time 0
+    entry 2
+      gate-states 0x00
+      time 500000
+  !
+  stream
+    id 1
+      destination-mac 00:1B:63:xx:xx:xx
+      vlan 200
+      priority 5
+      max-frame-size 1522
+      interval 125000
+    !
+  
+! PTP Configuration
+ptp
+  mode boundary
+  domain 0
+  profile ieee1588
+  transport ipv4
+  announce interval 0
+  sync interval -3
+  delay-req interval -3
+  clock-operation one-step
+  priority1 128
+  priority2 128
+  clock-port 1/1 slave
+```
+
+Network Segmentation Schema
+
+```python
+# Automated VLAN and Firewall Rule Generation
+def generate_network_segmentation(rack_count):
+    segmentation = {
+        "per_rack_vlans": [],
+        "firewall_rules": []
+    }
+    
+    for rack in range(1, rack_count + 1):
+        # Create per-rack VLAN
+        vlan_id = 2000 + rack
+        segmentation["per_rack_vlans"].append({
+            "id": vlan_id,
+            "name": f"rack-{rack}-sensors",
+            "subnet": f"10.10.{rack}.0/24",
+            "gateway": f"10.10.{rack}.1"
+        })
+        
+        # Generate firewall rules
+        segmentation["firewall_rules"].extend([
+            {
+                "rule": f"allow-rack-{rack}-to-controller",
+                "source": f"10.10.{rack}.0/24",
+                "destination": "10.0.100.0/24",
+                "ports": ["8883", "9092"],
+                "protocol": "tcp"
+            },
+            {
+                "rule": f"block-cross-rack-{rack}",
+                "source": f"10.10.{rack}.0/24",
+                "destination": "10.10.0.0/16",
+                "ports": ["any"],
+                "protocol": "any",
+                "action": "deny"
+            }
+        ])
+    
+    return segmentation
+```
+
+---
+
+PART 2: HARDWARE DEPLOYMENT
+
+2.1 Sensor Deployment Procedures
+
+Power Sensor Installation
+
+```python
+# Power Sensor Calibration Procedure
+def install_power_sensors(rack):
+    sensors = [
+        {
+            "type": "AC_PDU_MONITOR",
+            "location": f"rack-{rack}-pdu-primary",
+            "calibration_procedure": """
+            1. Connect to PDU MODBUS interface (TCP:502)
+            2. Verify voltage reading against Fluke 435-II
+            3. If discrepancy > 0.5%, adjust calibration register:
+               - Write to register 0x1000: (actual/measured * 10000)
+            4. Verify all three phases
+            5. Log calibration certificate to blockchain ledger
+            """,
+            "validation": {
+                "voltage_accuracy": "±0.2%",
+                "current_accuracy": "±0.5%",
+                "power_factor_range": "0.5-1.0"
+            }
+        },
+        {
+            "type": "SERVER_RAIL_MONITOR",
+            "location": f"rack-{rack}-server-{server}-12v-rail",
+            "installation": """
+            1. Install shunt resistor (0.001Ω, 1%) in 12V rail
+            2. Connect differential amplifier (INA226)
+            3. Calibrate using known load (50W resistor bank)
+            4. Configure I2C address (0x40 + rack_offset)
+            5. Validate with server BMC power readings
+            """,
+            "i2c_config": {
+                "address": 0x40 + rack,
+                "sampling_rate": "10kHz",
+                "averaging": 16
+            }
+        }
+    ]
+    
+    return deploy_and_validate_sensors(sensors)
+```
+
+Thermal Sensor Deployment Grid
+
+```yaml
+# Thermal Sensor Placement Specification
+thermal_grid:
+  rack_template: "standard-42u"
+  sensor_placement:
+    vertical:
+      - height: "42U"  # Top of rack
+        type: "infrared_array"
+        purpose: "ceiling_heat_map"
+      - height: "21U"  # Middle
+        type: "precision_rtd"
+        purpose: "aisle_temperature"
+      - height: "1U"   # Bottom
+        type: "precision_rtd"
+        purpose: "intake_monitoring"
+    
+    per_server:
+      - location: "front_intake"
+        sensor: "DHT22"
+        accuracy: "±0.5°C"
+      - location: "rear_exhaust" 
+        sensor: "MAX31865 (RTD)"
+        accuracy: "±0.1°C"
+      
+    liquid_cooling:
+      - location: "coolant_inlet"
+        sensor: "PT1000"
+        measurement: "ΔT across server"
+      - location: "coolant_outlet"
+        sensor: "PT1000"
+        measurement: "heat_rejection"
+  
+  calibration_procedure:
+    step1: "Soak at 20°C for 24 hours"
+    step2: "Measure at 30°C, 40°C, 50°C"
+    step3: "Generate 3-point calibration curve"
+    step4: "Upload coefficients to sensor EEPROM"
+```
+
+2.2 Edge Node Deployment
+
+Neuromorphic Edge Node (NEN) Bootstrap
+
+```bash
+#!/bin/bash
+# NEN Deployment Script - run on each edge node
+
+# Hardware Configuration
+modprobe intel_lpss  # Loihi 2 driver
+modprobe xdma        # FPGA driver
+
+# Configure Real-time Kernel
+echo "isolcpus=2-7" >> /boot/cmdline.txt
+echo "rcu_nocbs=2-7" >> /etc/default/grub
+systemctl set-property --runtime -- user.slice AllowedCPUs=0-1
+systemctl set-property --runtime -- system.slice AllowedCPUs=0-1
+
+# Install Neuromorphic Runtime
+wget https://quenne.io/releases/nxsdk-2.0.deb
+dpkg -i nxsdk-2.0.deb
+
+# Configure Spiking Neural Network
+cat > /etc/quenne/snn-config.json << EOF
+{
+  "network": "reservoir-computing",
+  "input_encoding": "temporal-contrast",
+  "learning_rule": "stdp",
+  "plasticity": {
+    "tau_plus": 16.8,
+    "tau_minus": 33.7,
+    "A_plus": 0.1,
+    "A_minus": 0.12
+  },
+  "monitoring": {
+    "spike_rate": true,
+    "weight_distribution": true,
+    "power_consumption": true
+  }
+}
+EOF
+
+# Deploy Containerized Services
+docker-compose -f nen-stack.yml up -d
+```
+
+NEN Container Stack
+
+```yaml
+# nen-stack.yml
+version: '3.8'
+
+services:
+  sensor-aggregator:
+    image: quenne/sensor-aggregator:2.1
+    devices:
+      - "/dev/i2c-1:/dev/i2c-1"
+      - "/dev/spidev0.0:/dev/spidev0.0"
+    volumes:
+      - "/var/run/dbus:/var/run/dbus"
+    cap_add:
+      - SYS_RAWIO
+      - SYS_TIME
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+              
+  neuromorphic-engine:
+    image: quenne/neuromorphic-runtime:2.1
+    devices:
+      - "/dev/loihi0:/dev/loihi0"
+    volumes:
+      - "/etc/quenne/snn-config.json:/config.json"
+      - "/var/lib/quenne/snn-weights:/weights"
+    environment:
+      - LOIHI_CORES=1024
+      - EVENT_BUFFER_SIZE=16384
+      
+  local-orchestrator:
+    image: quenne/local-orchestrator:2.1
+    volumes:
+      - "/var/run/k3s/containerd/containerd.sock:/var/run/containerd/containerd.sock"
+    environment:
+      - KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+      - RACK_ID=${RACK_ID}
+      
+  time-synchronization:
+    image: quenne/ptp-client:2.1
+    network_mode: "host"
+    cap_add:
+      - SYS_TIME
+      - SYS_NICE
+    devices:
+      - "/dev/ptp0:/dev/ptp0"
+      
+  security-agent:
+    image: quenne/security-agent:2.1
+    volumes:
+      - "/etc/quenne/certificates:/certificates"
+      - "/var/log/quenne:/var/log/quenne"
+    cap_add:
+      - NET_ADMIN
+      - SYS_PTRACE
+```
+
+---
+
+PART 3: SOFTWARE STACK IMPLEMENTATION
+
+3.1 Core Platform Deployment
+
+Kubernetes Cluster Configuration
+
+```bash
+# Control Plane Bootstrap
+kubeadm init \
+  --control-plane-endpoint "quenne-control-plane.internal:6443" \
+  --upload-certs \
+  --pod-network-cidr=10.244.0.0/16 \
+  --service-cidr=10.96.0.0/12 \
+  --apiserver-advertise-address=10.0.100.10 \
+  --apiserver-cert-extra-sans=quenne.internal \
+  --feature-gates="CPUManager=true,TopologyManager=true" \
+  --kubelet-extra-args="--cpu-manager-policy=static --reserved-cpus=0-1"
+
+# Install QUENNE Operator
+helm repo add quenne https://charts.quenne.io
+helm install quenne-operator quenne/quenne-operator \
+  --namespace quenne-system \
+  --create-namespace \
+  --set telemetry.enabled=true \
+  --set digitalTwin.storageClass=fast-ssd \
+  --set neuromorphic.hardwareType=loihi2
+```
+
+QUENNE Custom Resource Definitions
+
+```yaml
+# quenne-crds.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: optimizationjobs.quenne.io
+spec:
+  group: quenne.io
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                optimizationType:
+                  type: string
+                  enum: [immediate, predictive, planning]
+                horizon:
+                  type: string
+                objectives:
+                  type: array
+                  items:
+                    type: string
+                    enum: [energy, carbon, cost, performance]
+                constraints:
+                  type: object
+                  properties:
+                    thermal:
+                      type: object
+                      properties:
+                        maxTemperature:
+                          type: number
+                    power:
+                      type: object
+                      properties:
+                        maxDraw:
+                          type: number
+---
+apiVersion: quenne.io/v1alpha1
+kind: OptimizationJob
+metadata:
+  name: peak-shaving-2024-06-10
+spec:
+  optimizationType: predictive
+  horizon: "4h"
+  objectives:
+    - peak_power_reduction
+    - cost_minimization
+  constraints:
+    thermal:
+      maxTemperature: 85
+      safetyMargin: 5
+    power:
+      maxDraw: 9500  # 95% of 10MW
+  solverConfig:
+    algorithm: digital_annealer
+    timeout: 500ms
+    optimalityGap: 0.02
+```
+
+3.2 Telemetry Pipeline Implementation
+
+Flink Streaming Job Configuration
+
+```scala
+// Telemetry Processing Pipeline
+object TelemetryProcessingJob {
+  def main(args: Array[String]): Unit = {
+    val env = StreamExecutionEnvironment.getExecutionEnvironment
+    env.enableCheckpointing(10000) // 10 seconds
+    env.setParallelism(48)
+    
+    // Source: Apache Pulsar
+    val telemetryStream = env
+      .addSource(new PulsarSource[Array[Byte]](...))
+      .name("sensor-ingestion")
+      .uid("sensor-ingestion")
+    
+    // Processing Pipeline
+    val processedStream = telemetryStream
+      .flatMap(new SensorDeserializer())
+      .keyBy(sensor => s"${sensor.rack}-${sensor.type}")
+      .process(new AnomalyDetectionProcessFunction())
+      .name("anomaly-detection")
+      .uid("anomaly-detection")
+      
+      .keyBy(_.rack)
+      .window(TumblingEventTimeWindows.of(Time.seconds(1)))
+      .aggregate(new SensorAggregation())
+      .name("1s-aggregation")
+      .uid("1s-aggregation")
+      
+      .keyBy(_ => "global")
+      .window(TumblingProcessingTimeWindows.of(Time.minutes(5)))
+      .process(new ThermalModelUpdate())
+      .name("thermal-model-update")
+      .uid("thermal-model-update")
+    
+    // Sinks
+    processedStream
+      .addSink(new InfluxDBSink())
+      .name("influxdb-sink")
+      .uid("influxdb-sink")
+      
+    processedStream
+      .filter(_.anomalyScore > 0.7)
+      .addSink(new AlertSink())
+      .name("alert-sink")
+      .uid("alert-sink")
+    
+    env.execute("QUENNE Telemetry Processing")
+  }
+}
+
+// Custom Process Function for Anomaly Detection
+class AnomalyDetectionProcessFunction 
+  extends KeyedProcessFunction[String, SensorReading, ProcessedReading] {
+  
+  private lazy val snnModel: SNNModel = {
+    ModelLoader.load("/models/anomaly-detection.snn")
+  }
+  
+  override def processElement(
+    reading: SensorReading,
+    ctx: KeyedProcessFunction.Context,
+    out: Collector[ProcessedReading]
+  ): Unit = {
+    
+    // Convert to spikes
+    val spikeTrain = SpikeEncoder.encode(reading.value, reading.timestamp)
+    
+    // Process through SNN
+    val outputSpikes = snnModel.process(spikeTrain)
+    
+    // Calculate anomaly score
+    val anomalyScore = outputSpikes.spikeRate / snnModel.threshold
+    
+    val processed = ProcessedReading(
+      sensorId = reading.sensorId,
+      timestamp = reading.timestamp,
+      value = reading.value,
+      anomalyScore = anomalyScore,
+      spikeCount = outputSpikes.spikeCount
+    )
+    
+    out.collect(processed)
+    
+    // Side output for model training
+    if (anomalyScore > 0.5) {
+      ctx.output(new OutputTag[TrainingExample]("training-data"), 
+        TrainingExample(reading, outputSpikes))
+    }
+  }
+}
+```
+
+InfluxDB Schema Design
+
+```sql
+-- Telemetry Database Schema
+CREATE DATABASE quenne_telemetry WITH 
+  DURATION 30d 
+  REPLICATION 3 
+  SHARD DURATION 1h 
+  NAME autogen;
+
+CREATE RETENTION POLICY one_year 
+  ON quenne_telemetry 
+  DURATION 365d 
+  REPLICATION 3;
+
+-- Continuous Queries for Aggregation
+CREATE CONTINUOUS QUERY "cq_5m_agg" ON "quenne_telemetry"
+BEGIN
+  SELECT 
+    mean("value") as value_mean,
+    stddev("value") as value_stddev,
+    percentile("value", 95) as value_p95,
+    count("value") as sample_count
+  INTO "quenne_telemetry"."one_year".:MEASUREMENT
+  FROM /.*/
+  GROUP BY time(5m), *
+END;
+
+-- Tag Schema
+CREATE TAG KEY "sensor_type" WITH DATATYPE STRING;
+CREATE TAG KEY "rack_id" WITH DATATYPE STRING;
+CREATE TAG KEY "server_id" WITH DATATYPE STRING;
+CREATE TAG KEY "phase" WITH DATATYPE STRING;
+
+-- Field Schema
+CREATE FIELD KEY "temperature" WITH DATATYPE FLOAT;
+CREATE FIELD KEY "power" WITH DATATYPE FLOAT;
+CREATE FIELD KEY "airflow" WITH DATATYPE FLOAT;
+CREATE FIELD KEY "vibration_x" WITH DATATYPE FLOAT;
+CREATE FIELD KEY "vibration_y" WITH DATATYPE FLOAT;
+CREATE FIELD KEY "vibration_z" WITH DATATYPE FLOAT;
+CREATE FIELD KEY "anomaly_score" WITH DATATYPE FLOAT;
+```
+
+3.3 Digital Twin Implementation
+
+Unity Digital Twin Configuration
+
+```csharp
+// Unity Digital Twin Controller
+using UnityEngine;
+using Unity.Reflect;
+using System.Collections.Generic;
+
+public class QUENNEDigitalTwin : MonoBehaviour
+{
+    [Header("Data Sources")]
+    public InfluxDBDataSource telemetrySource;
+    public BIMDataSource bimSource;
+    public WeatherAPI weatherSource;
+    
+    [Header("Visualization Settings")]
+    public ColorScale thermalColorScale;
+    public AnimationCurve powerVisualizationCurve;
+    public float updateInterval = 0.1f; // 100ms
+    
+    private Dictionary<string, RackVisualization> racks = 
+        new Dictionary<string, RackVisualization>();
+    private DigitalTwinModel model;
+    
+    void Start()
+    {
+        // Load BIM model
+        model = LoadBIMModel("datacenter.rvt");
+        
+        // Create visualization objects
+        foreach (var rack in model.racks)
+        {
+            var rackViz = CreateRackVisualization(rack);
+            racks.Add(rack.id, rackViz);
+        }
+        
+        // Start telemetry stream
+        StartCoroutine(UpdateTelemetry());
+    }
+    
+    IEnumerator UpdateTelemetry()
+    {
+        while (true)
+        {
+            var telemetry = telemetrySource.GetLatestTelemetry();
+            
+            foreach (var reading in telemetry)
+            {
+                if (racks.ContainsKey(reading.rackId))
+                {
+                    racks[reading.rackId].UpdateVisualization(reading);
+                }
+            }
+            
+            // Update thermal simulation
+            UpdateThermalSimulation();
+            
+            // Update predictive visualization
+            UpdatePredictiveVisualization();
+            
+            yield return new WaitForSeconds(updateInterval);
+        }
+    }
+    
+    void UpdateThermalSimulation()
+    {
+        // Run CFD simulation using Compute Shaders
+        var thermalSim = GetComponent<ThermalSimulation>();
+        thermalSim.SetBoundaryConditions(GetCurrentTemperatures());
+        thermalSim.Simulate(Time.deltaTime);
+        
+        // Update visualization
+        var temperatureField = thermalSim.GetTemperatureField();
+        UpdateHeatMap(temperatureField);
+    }
+    
+    public void RunWhatIfScenario(WhatIfScenario scenario)
+    {
+        // Clone current state
+        var scenarioModel = model.Clone();
+        
+        // Apply scenario changes
+        scenarioModel.ApplyScenario(scenario);
+        
+        // Run simulation
+        var result = RunScenarioSimulation(scenarioModel);
+        
+        // Visualize results
+        DisplayScenarioResults(result);
+    }
+}
+```
+
+Digital Twin API Server
+
+```python
+# FastAPI Digital Twin Server
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from typing import Dict, List
+import asyncio
+import numpy as np
+
+app = FastAPI(title="QUENNE Digital Twin API")
+
+class DigitalTwinManager:
+    def __init__(self):
+        self.twin_models: Dict[str, DigitalTwin] = {}
+        self.simulation_engine = SimulationEngine()
+        self.websocket_connections: Dict[str, List[WebSocket]] = {}
+    
+    async def update_twin(self, datacenter_id: str, telemetry: Dict):
+        """Update digital twin with new telemetry"""
+        twin = self.twin_models[datacenter_id]
+        
+        # Update physics model
+        twin.physics_model.update(telemetry)
+        
+        # Run ML predictions
+        predictions = await twin.ml_model.predict(telemetry)
+        
+        # Update visualization state
+        twin.visualization_state = self._create_visualization_state(
+            twin.physics_model, predictions
+        )
+        
+        # Notify connected clients
+        await self._notify_clients(datacenter_id, twin.visualization_state)
+    
+    async def run_what_if(self, datacenter_id: str, scenario: Scenario):
+        """Run what-if scenario"""
+        twin = self.twin_models[datacenter_id].clone()
+        
+        # Apply scenario
+        twin.apply_scenario(scenario)
+        
+        # Run simulation
+        results = await self.simulation_engine.simulate(
+            twin, 
+            duration=scenario.duration,
+            step_size=0.1  # 100ms
+        )
+        
+        return results
+
+@app.websocket("/ws/twin/{datacenter_id}")
+async def websocket_endpoint(websocket: WebSocket, datacenter_id: str):
+    await websocket.accept()
+    
+    # Add to connection pool
+    manager.websocket_connections[datacenter_id].append(websocket)
+    
+    try:
+        while True:
+            # Receive commands from client
+            data = await websocket.receive_json()
+            
+            if data["type"] == "what_if":
+                scenario = Scenario(**data["scenario"])
+                results = await manager.run_what_if(datacenter_id, scenario)
+                await websocket.send_json({
+                    "type": "scenario_results",
+                    "results": results
+                })
+                
+    except WebSocketDisconnect:
+        # Clean up connection
+        manager.websocket_connections[datacenter_id].remove(websocket)
+
+@app.post("/api/v1/telemetry/{datacenter_id}")
+async def receive_telemetry(datacenter_id: str, telemetry: TelemetryData):
+    """Endpoint for telemetry ingestion"""
+    await manager.update_twin(datacenter_id, telemetry.dict())
+    return {"status": "accepted"}
+```
+
+3.4 Neuromorphic Implementation
+
+SNN Training Pipeline
+
+```python
+# PyTorch-based SNN Training
+import snntorch as snn
+import torch
+import torch.nn as nn
+
+class AnomalyDetectionSNN(nn.Module):
+    def __init__(self, input_size=256, hidden_size=512, output_size=1):
+        super().__init__()
+        
+        # Input encoding layer
+        self.encoder = TemporalContrastEncoder(
+            threshold=0.1,
+            tau=20  # ms
+        )
+        
+        # Spiking layers
+        self.lif1 = snn.Leaky(
+            beta=0.9,
+            threshold=1.0,
+            reset_mechanism="zero"
+        )
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        
+        self.lif2 = snn.Leaky(
+            beta=0.9,
+            threshold=1.0,
+            reset_mechanism="zero"
+        )
+        self.fc2 = nn.Linear(hidden_size, hidden_size // 2)
+        
+        self.lif3 = snn.Leaky(
+            beta=0.9,
+            threshold=1.0,
+            reset_mechanism="zero"
+        )
+        self.fc3 = nn.Linear(hidden_size // 2, output_size)
+        
+        # STDP learning
+        self.learning_rule = STDP(
+            tau_plus=16.8,
+            tau_minus=33.7,
+            A_plus=0.1,
+            A_minus=0.12
+        )
+    
+    def forward(self, x, num_steps=100):
+        # Initialize hidden states
+        mem1 = self.lif1.init_leaky()
+        mem2 = self.lif2.init_leaky()
+        mem3 = self.lif3.init_leaky()
+        
+        # Encode input to spikes
+        spike_train = self.encoder(x)
+        
+        # Record spikes for STDP
+        spike_records = []
+        
+        for step in range(num_steps):
+            # Layer 1
+            cur1 = self.fc1(spike_train[step])
+            spk1, mem1 = self.lif1(cur1, mem1)
+            
+            # Layer 2
+            cur2 = self.fc2(spk1)
+            spk2, mem2 = self.lif2(cur2, mem2)
+            
+            # Layer 3
+            cur3 = self.fc3(spk2)
+            spk3, mem3 = self.lif3(cur3, mem3)
+            
+            # Record for learning
+            spike_records.append((spk1, spk2, spk3))
+        
+        # Apply STDP learning
+        if self.training:
+            self.learning_rule.update_weights(spike_records)
+        
+        # Return output spike rate as anomaly score
+        output_spike_rate = torch.mean(spk3.float())
+        return output_spike_rate
+
+# Training loop
+def train_snn(model, dataloader, epochs=100):
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    
+    for epoch in range(epochs):
+        total_loss = 0
+        
+        for batch_idx, (data, labels) in enumerate(dataloader):
+            # Forward pass
+            outputs = model(data, num_steps=100)
+            
+            # Loss calculation
+            loss = nn.BCELoss()(outputs, labels)
+            
+            # Backward pass
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            
+            total_loss += loss.item()
+        
+        # Convert to Loihi-compatible format
+        if epoch % 10 == 0:
+            model_quantized = quantize_model_for_loihi(model)
+            save_model_for_loihi(model_quantized, f"model_epoch_{epoch}.bin")
+```
+
+Loihi 2 Deployment Script
+
+```python
+# Loihi 2 Deployment and Inference
+import nxsdk.api.n2a as nx
+import numpy as np
+
+class LoihiDeployment:
+    def __init__(self, model_path):
+        self.board = nx.N2Board()
+        self.net = nx.NxNet()
+        
+        # Load SNN model
+        self.load_model(model_path)
+        
+        # Configure cores
+        self.configure_cores()
+    
+    def load_model(self, model_path):
+        """Load pre-trained SNN model"""
+        # Parse model configuration
+        with open(model_path, 'rb') as f:
+            self.model_config = nx.N2ModelParser.parse(f)
+        
+        # Map to Loihi cores
+        self.core_map = nx.N2Compiler.compile(
+            self.model_config,
+            num_cores=1024,
+            core_map_strategy="optimize_power"
+        )
+    
+    def configure_cores(self):
+        """Configure Loihi 2 cores"""
+        for core_id in range(1024):
+            core = self.board.getCore(core_id)
+            
+            # Configure core parameters
+            core.setParameter("vThMant", 128)  # Threshold
+            core.setParameter("decayV", 128)   # Membrane decay
+            core.setParameter("decayU", 64)    # Current decay
+            
+            # Enable monitoring
+            core.enableSpikeRecording(True)
+            core.enablePowerMonitoring(True)
+    
+    def process_input(self, input_spikes):
+        """Process input spikes through SNN"""
+        # Reset board
+        self.board.reset()
+        
+        # Inject input spikes
+        input_compartment = self.net.getInputCompartment()
+        input_compartment.addSpikes(input_spikes)
+        
+        # Run simulation
+        self.board.run(100)  # 100 timesteps
+        
+        # Read output spikes
+        output_compartment = self.net.getOutputCompartment()
+        output_spikes = output_compartment.getSpikes()
+        
+        # Read power consumption
+        power_stats = self.board.getPowerStats()
+        
+        return {
+            "output_spikes": output_spikes,
+            "power_consumption": power_stats["dynamic_power"],
+            "spike_count": len(output_spikes)
+        }
+    
+    def real_time_processing(self, sensor_stream):
+        """Real-time processing pipeline"""
+        spike_encoder = TemporalContrastEncoder()
+        
+        while True:
+            # Read sensor data
+            sensor_data = sensor_stream.read()
+            
+            # Encode to spikes
+            spikes = spike_encoder.encode(sensor_data)
+            
+            # Process through Loihi
+            result = self.process_input(spikes)
+            
+            # Calculate anomaly score
+            anomaly_score = result["spike_count"] / 100  # Normalize
+            
+            # Trigger alert if needed
+            if anomaly_score > 0.7:
+                self.trigger_alert(anomaly_score, sensor_data)
+            
+            # Update power-adaptive settings
+            self.adaptive_power_management(result["power_consumption"])
+```
+
+3.5 Quantum-Inspired Optimization
+
+Digital Annealer Integration
+
+```python
+# Fujitsu Digital Annealer Integration
+import fujitsu_da as da
+import numpy as np
+
+class QUENNEOptimizer:
+    def __init__(self):
+        self.da_solver = da.Solver(
+            model="DAU2000Q",
+            timeout=500,  # 500ms
+            num_reads=1000
+        )
+        
+        self.classical_fallback = SimulatedAnnealingSolver()
+        
+        # Cache for common problems
+        self.problem_cache = LRUCache(maxsize=100)
+    
+    def optimize_workload_placement(self, current_state, constraints):
+        """Optimize workload placement using QUBO"""
+        
+        # Check cache
+        cache_key = self._generate_cache_key(current_state, constraints)
+        if cache_key in self.problem_cache:
+            return self.problem_cache[cache_key]
+        
+        # Formulate QUBO
+        qubo = self._build_workload_qubo(current_state, constraints)
+        
+        try:
+            # Solve with Digital Annealer
+            result = self.da_solver.solve(
+                qubo,
+                timeout=450  # Leave 50ms for post-processing
+            )
+            
+            if result["optimality_gap"] < 0.05:  # 5% optimality gap
+                solution = self._extract_solution(result)
+                
+                # Validate solution
+                if self._validate_solution(solution, constraints):
+                    # Cache solution
+                    self.problem_cache[cache_key] = solution
+                    return solution
+        except Exception as e:
+            logging.warning(f"DA solver failed: {e}, falling back to classical")
+        
+        # Fallback to classical solver
+        result = self.classical_fallback.solve(qubo)
+        solution = self._extract_solution(result)
+        
+        return solution
+    
+    def _build_workload_qubo(self, state, constraints):
+        """Build QUBO matrix for workload placement"""
+        n_servers = len(state["servers"])
+        n_workloads = len(state["workloads"])
+        
+        # Initialize Q matrix
+        Q = np.zeros((n_servers * n_workloads, n_servers * n_workloads))
+        
+        # Build QUBO terms
+        for i in range(n_servers):
+            for j in range(n_workloads):
+                idx = i * n_workloads + j
+                
+                # Linear terms: cost of placing workload j on server i
+                Q[idx, idx] = self._compute_placement_cost(
+                    state["servers"][i], 
+                    state["workloads"][j],
+                    constraints
+                )
+                
+                # Quadratic terms: constraints
+                for k in range(n_workloads):
+                    if j != k:
+                        idx2 = i * n_workloads + k
+                        # Penalize multiple workloads on same server (soft constraint)
+                        Q[idx, idx2] = constraints["multi_workload_penalty"]
+                
+                # Temporal coupling
+                for t in range(constraints["time_horizon"] - 1):
+                    # Penalize migration
+                    idx_next = (i * n_workloads + j) + (t * n_servers * n_workloads)
+                    Q[idx, idx_next] = constraints["migration_penalty"]
+        
+        return Q
+    
+    def optimize_cooling(self, thermal_state, workload_plan):
+        """Optimize cooling system operation"""
+        # Formulate as Ising model
+        ising_model = self._build_cooling_ising(thermal_state, workload_plan)
+        
+        # Add penalty terms for constraints
+        ising_model = self._add_cooling_constraints(
+            ising_model, 
+            thermal_state["constraints"]
+        )
+        
+        # Solve
+        result = self.da_solver.solve_ising(ising_model)
+        
+        # Extract cooling setpoints
+        cooling_plan = self._extract_cooling_plan(result)
+        
+        return cooling_plan
+```
+
+Real-Time Optimization Scheduler
+
+```python
+# Real-Time Optimization Scheduler
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from typing import Dict, List
+
+@dataclass
+class OptimizationTask:
+    priority: int  # 0=highest, 9=lowest
+    deadline: float  # seconds from now
+    problem: Dict
+    callback: callable
+
+class OptimizationScheduler:
+    def __init__(self):
+        self.executor = ThreadPoolExecutor(
+            max_workers=4,
+            thread_name_prefix="optimization_worker"
+        )
+        
+        self.task_queue = asyncio.PriorityQueue()
+        self.running_tasks: Dict[str, asyncio.Task] = {}
+        
+        # Start scheduler loop
+        asyncio.create_task(self._scheduler_loop())
+    
+    async def submit_task(self, task: OptimizationTask) -> str:
+        """Submit optimization task"""
+        task_id = str(uuid.uuid4())
+        
+        # Calculate priority score (lower = higher priority)
+        priority_score = task.priority * 10 + task.deadline
+        
+        await self.task_queue.put((priority_score, task_id, task))
+        
+        return task_id
+    
+    async def _scheduler_loop(self):
+        """Main scheduler loop"""
+        while True:
+            # Get next task
+            priority_score, task_id, task = await self.task_queue.get()
+            
+            # Check if we can meet deadline
+            current_time = time.time()
+            if current_time + 0.1 > task.deadline:  # 100ms margin
+                # Too late, reject task
+                task.callback({"error": "deadline_missed"})
+                continue
+            
+            # Execute task
+            task_future = asyncio.get_event_loop().run_in_executor(
+                self.executor,
+                self._execute_optimization,
+                task
+            )
+            
+            # Store task
+            self.running_tasks[task_id] = task_future
+            
+            # Set timeout
+            try:
+                result = await asyncio.wait_for(
+                    task_future, 
+                    timeout=task.deadline - current_time - 0.05
+                )
+                task.callback(result)
+            except asyncio.TimeoutError:
+                task.callback({"error": "timeout"})
+            finally:
+                del self.running_tasks[task_id]
+    
+    def _execute_optimization(self, task: OptimizationTask):
+        """Execute optimization task"""
+        problem_type = task.problem.get("type")
+        
+        if problem_type == "workload_placement":
+            return self.optimizer.optimize_workload_placement(
+                task.problem["current_state"],
+                task.problem["constraints"]
+            )
+        elif problem_type == "cooling_optimization":
+            return self.optimizer.optimize_cooling(
+                task.problem["thermal_state"],
+                task.problem["workload_plan"]
+            )
+        elif problem_type == "power_management":
+            return self.optimizer.optimize_power(
+                task.problem["power_state"],
+                task.problem["constraints"]
+            )
+        else:
+            raise ValueError(f"Unknown problem type: {problem_type}")
+```
+
+---
+
+PART 4: INTEGRATION & ORCHESTRATION
+
+4.1 Kubernetes Scheduler Extension
+
+```go
+// QUENNE Scheduler Extender
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"time"
+	
+	"k8s.io/klog/v2"
+	schedulerapi "k8s.io/kube-scheduler/extender/v1"
+)
+
+type QUENNEScheduler struct {
+	quenneClient *QuenneClient
+	cache        *PredictionCache
+}
+
+func (q *QUENNEScheduler) Filter(args schedulerapi.ExtenderArgs) *schedulerapi.ExtenderFilterResult {
+	startTime := time.Now()
+	
+	// Get current data center state
+	state, err := q.quenneClient.GetCurrentState()
+	if err != nil {
+		klog.Errorf("Failed to get state: %v", err)
+		return &schedulerapi.ExtenderFilterResult{
+			Nodes:       args.Nodes,
+			FailedNodes: nil,
+			Error:       "",
+		}
+	}
+	
+	// Filter nodes based on QUENNE constraints
+	filteredNodes := make([]*v1.Node, 0)
+	failedNodes := make(schedulerapi.FailedNodesMap)
+	
+	for _, node := range args.Nodes.Items {
+		nodeName := node.Name
+		
+		// Check thermal constraints
+		if !q.checkThermalConstraints(nodeName, state) {
+			failedNodes[nodeName] = "Thermal constraint violation"
+			continue
+		}
+		
+		// Check power constraints
+		if !q.checkPowerConstraints(nodeName, state, args.Pod) {
+			failedNodes[nodeName] = "Power constraint violation"
+			continue
+		}
+		
+		// Check carbon intensity
+		if !q.checkCarbonConstraints(nodeName, state) {
+			failedNodes[nodeName] = "Carbon constraint violation"
+			continue
+		}
+		
+		// Check predictive failures
+		if q.isPredictedFailure(nodeName, state) {
+			failedNodes[nodeName] = "Predicted failure"
+			continue
+		}
+		
+		filteredNodes = append(filteredNodes, &node)
+	}
+	
+	klog.Infof("Filter completed in %v, filtered %d/%d nodes", 
+		time.Since(startTime), len(failedNodes), len(args.Nodes.Items))
+	
+	return &schedulerapi.ExtenderFilterResult{
+		Nodes: &v1.NodeList{
+			Items: filteredNodes,
+		},
+		FailedNodes: failedNodes,
+		Error:       "",
+	}
+}
+
+func (q *QUENNEScheduler) Prioritize(args schedulerapi.ExtenderArgs) *schedulerapi.HostPriorityList {
+	startTime := time.Now()
+	
+	// Calculate scores for each node
+	result := make(schedulerapi.HostPriorityList, len(args.Nodes.Items))
+	
+	for i, node := range args.Nodes.Items {
+		score := q.calculateNodeScore(&node, args.Pod)
+		result[i] = schedulerapi.HostPriority{
+			Host:  node.Name,
+			Score: int64(score),
+		}
+	}
+	
+	klog.Infof("Prioritize completed in %v", time.Since(startTime))
+	
+	return &result
+}
+
+func (q *QUENNEScheduler) calculateNodeScore(node *v1.Node, pod *v1.Pod) int {
+	score := 0.0
+	
+	// Thermal efficiency score (colder is better)
+	thermalScore := q.getThermalEfficiency(node.Name)
+	score += thermalScore * 0.25
+	
+	// Power efficiency score
+	powerScore := q.getPowerEfficiency(node.Name)
+	score += powerScore * 0.25
+	
+	// Carbon intensity score (lower is better)
+	carbonScore := q.getCarbonIntensityScore(node.Name)
+	score += carbonScore * 0.30
+	
+	// Reliability score
+	reliabilityScore := q.getReliabilityScore(node.Name)
+	score += reliabilityScore * 0.20
+	
+	// Normalize to 0-100
+	return int(score * 100)
+}
+```
+
+4.2 Control System Integration
+
+BACnet/MODBUS Integration
+
+```python
+# Protocol Adapter Implementation
+import bacpypes
+from bacpypes.apdu import ReadPropertyRequest, WritePropertyRequest
+from bacpypes.object import AnalogValueObject, BinaryValueObject
+
+class QUENNEBACnetAdapter:
+    def __init__(self, device_ip, device_id):
+        self.device_ip = device_ip
+        self.device_id = device_id
+        
+        # Create BACnet stack
+        this_device = LocalDeviceObject(
+            objectName="QUENNE-Adapter",
+            objectIdentifier=599,
+            maxApduLengthAccepted=1024,
+            segmentationSupported='segmentedBoth',
+            vendorIdentifier=842
+        )
+        
+        self.app = BIPSimpleApplication(this_device, device_ip)
+        
+        # Map of QUENNE parameters to BACnet objects
+        self.object_map = self.load_mapping_config()
+    
+    async def read_cooling_setpoint(self, crac_unit):
+        """Read current cooling setpoint"""
+        obj_id = self.object_map[crac_unit]["setpoint"]
+        
+        request = ReadPropertyRequest(
+            objectIdentifier=obj_id,
+            propertyIdentifier='presentValue'
+        )
+        
+        response = await self.app.request(request)
+        return response.propertyValue.cast_out(float)
+    
+    async def set_cooling_setpoint(self, crac_unit, setpoint):
+        """Set cooling setpoint"""
+        obj_id = self.object_map[crac_unit]["setpoint"]
+        
+        # Validate setpoint within safe range
+        if not self.validate_setpoint(setpoint, crac_unit):
+            raise ValueError(f"Setpoint {setpoint} out of range for {crac_unit}")
+        
+        request = WritePropertyRequest(
+            objectIdentifier=obj_id,
+            propertyIdentifier='presentValue',
+            propertyValue=Real(setpoint)
+        )
+        
+        response = await self.app.request(request)
+        
+        # Verify write
+        actual = await self.read_cooling_setpoint(crac_unit)
+        
+        if abs(actual - setpoint) > 0.1:
+            raise RuntimeError(f"Setpoint verification failed: {actual} != {setpoint}")
+        
+        return True
+    
+    async def monitor_alarms(self):
+        """Monitor BACnet alarm events"""
+        # Subscribe to COV (Change of Value)
+        for device in self.monitored_devices:
+            request = SubscribeCOVRequest(
+                subscriberProcessIdentifier=1,
+                monitoredObjectIdentifier=device["obj_id"],
+                issueConfirmedNotifications=False,
+                lifetime=3600  # 1 hour
+            )
+            
+            await self.app.request(request)
+        
+        # Process incoming COV notifications
+        while True:
+            notification = await self.receive_notification()
+            
+            if notification.eventType == 'toOffnormal':
+                await self.handle_alarm(notification)
+```
+
+Redfish Server Management
+
+```python
+# Redfish API Integration
+import redfish
+from redfish.rest.v1 import ServerDownOrUnreachableError
+
+class QUENNERedfishManager:
+    def __init__(self, bmc_address, username, password):
+        self.bmc_address = bmc_address
+        self.rest_client = redfish.redfish_client(
+            base_url=f"https://{bmc_address}",
+            username=username,
+            password=password,
+            default_prefix="/redfish/v1"
+        )
+        
+        self.rest_client.login()
+        
+        # Cache system info
+        self.systems = self.rest_client.get("/Systems").dict
+    
+    def get_server_power(self, server_id):
+        """Get server power consumption"""
+        response = self.rest_client.get(
+            f"/Systems/{server_id}/Power"
+        )
+        
+        power_data = response.dict
+        
+        # Extract power readings
+        power_readings = {}
+        for supply in power_data.get("PowerSupplies", []):
+            power_readings[supply["Name"]] = {
+                "power_input": supply.get("PowerInputWatts"),
+                "power_output": supply.get("PowerOutputWatts"),
+                "efficiency": supply.get("EfficiencyPercent")
+            }
+        
+        return power_readings
+    
+    def set_power_limit(self, server_id, power_limit_watts):
+        """Set server power cap"""
+        payload = {
+            "PowerControl": [{
+                "PowerLimit": {
+                    "LimitInWatts": power_limit_watts,
+                    "CorrectionInMs": 100,  # 100ms correction time
+                    "Action": "LogEventOnly"  # or "PowerDown"
+                }
+            }]
+        }
+        
+        response = self.rest_client.patch(
+            f"/Systems/{server_id}",
+            body=payload
+        )
+        
+        return response.status == 200
+    
+    def get_thermal_data(self, server_id):
+        """Get server thermal data"""
+        response = self.rest_client.get(
+            f"/Systems/{server_id}/Thermal"
+        )
+        
+        thermal_data = response.dict
+        
+        # Process temperatures
+        temperatures = {}
+        for temp in thermal_data.get("Temperatures", []):
+            sensor_name = temp["Name"]
+            temperatures[sensor_name] = {
+                "value": temp["ReadingCelsius"],
+                "thresholds": {
+                    "upper_critical": temp.get("UpperThresholdCritical"),
+                    "upper_fatal": temp.get("UpperThresholdFatal")
+                }
+            }
+        
+        return temperatures
+```
+
+4.3 Control Loop Implementation
+
+```python
+# Main Control Loop Implementation
+import asyncio
+from datetime import datetime, timedelta
+from typing import Dict, List
+import numpy as np
+
+class QUENNEControlLoop:
+    def __init__(self, config):
+        self.config = config
+        
+        # Initialize components
+        self.telemetry = TelemetryClient(config.telemetry_endpoint)
+        self.optimizer = QUENNEOptimizer()
+        self.actuator = ActuatorClient(config.actuator_endpoint)
+        self.digital_twin = DigitalTwinClient(config.digital_twin_endpoint)
+        
+        # Control loop state
+        self.state = ControlState()
+        self.last_optimization = None
+        
+        # Prediction models
+        self.thermal_predictor = ThermalPredictor()
+        self.power_predictor = PowerPredictor()
+        
+        # Start control loops
+        self.loops = [
+            asyncio.create_task(self.fast_control_loop()),
+            asyncio.create_task(self.medium_control_loop()),
+            asyncio.create_task(self.slow_control_loop())
+        ]
+    
+    async def fast_control_loop(self):
+        """1-second loop for reactive control"""
+        while True:
+            start_time = time.time()
+            
+            # Read latest telemetry
+            telemetry = await self.telemetry.get_latest(age_ms=100)
+            
+            # Check for emergencies
+            emergencies = self.detect_emergencies(telemetry)
+            if emergencies:
+                await self.handle_emergencies(emergencies, telemetry)
+            
+            # Update digital twin
+            await self.digital_twin.update(telemetry)
+            
+            # Sleep for remaining time
+            elapsed = time.time() - start_time
+            await asyncio.sleep(max(0, 1.0 - elapsed))
+    
+    async def medium_control_loop(self):
+        """5-minute loop for optimization"""
+        while True:
+            # Wait for next optimization interval
+            await asyncio.sleep(300)  # 5 minutes
+            
+            # Get current state
+            current_state = await self.get_current_state()
+            
+            # Get predictions
+            predictions = await self.get_predictions(
+                horizon_minutes=30,
+                resolution_minutes=5
+            )
+            
+            # Run optimization
+            optimization_result = await self.optimizer.optimize(
+                current_state=current_state,
+                predictions=predictions,
+                objectives=self.config.objectives,
+                constraints=self.config.constraints
+            )
+            
+            # Validate solution
+            if self.validate_solution(optimization_result):
+                # Execute control actions
+                await self.execute_control_actions(
+                    optimization_result["actions"]
+                )
+                
+                # Update state
+                self.state.last_optimization = optimization_result
+                self.state.optimization_history.append(optimization_result)
+                
+                # Log results
+                self.log_optimization(optimization_result)
+    
+    async def slow_control_loop(self):
+        """1-hour loop for planning"""
+        while True:
+            # Wait for next planning interval
+            await asyncio.sleep(3600)  # 1 hour
+            
+            # Run what-if scenarios for next 24 hours
+            scenarios = self.generate_planning_scenarios()
+            
+            scenario_results = []
+            for scenario in scenarios:
+                result = await self.evaluate_scenario(scenario)
+                scenario_results.append((scenario, result))
+            
+            # Select best scenario
+            best_scenario = self.select_best_scenario(scenario_results)
+            
+            # Update long-term plan
+            await self.update_long_term_plan(best_scenario)
+    
+    async def execute_control_actions(self, actions: List[ControlAction]):
+        """Execute control actions with safety checks"""
+        execution_plan = []
+        
+        for action in actions:
+            # Check safety constraints
+            if not await self.check_action_safety(action):
+                logging.warning(f"Safety check failed for action: {action}")
+                continue
+            
+            # Add to execution plan
+            execution_plan.append(action)
+        
+        # Execute actions in order
+        for action in execution_plan:
+            try:
+                result = await self.actuator.execute(action)
+                
+                if not result["success"]:
+                    logging.error(f"Action failed: {action}, error: {result['error']}")
+                    
+                    # Trigger fallback
+                    await self.execute_fallback(action)
+            except Exception as e:
+                logging.error(f"Exception executing action {action}: {e}")
+    
+    def detect_emergencies(self, telemetry) -> List[Emergency]:
+        """Detect emergency conditions"""
+        emergencies = []
+        
+        # Check temperature thresholds
+        for sensor in telemetry["temperature"]:
+            if sensor["value"] > sensor["thresholds"]["critical"]:
+                emergencies.append(Emergency(
+                    type="thermal_critical",
+                    location=sensor["location"],
+                    value=sensor["value"],
+                    threshold=sensor["thresholds"]["critical"]
+                ))
+        
+        # Check power anomalies
+        power_anomalies = self.neuromorphic_detector.detect_power_anomalies(
+            telemetry["power"]
+        )
+        
+        for anomaly in power_anomalies:
+            emergencies.append(Emergency(
+                type="power_anomaly",
+                location=anomaly["circuit"],
+                value=anomaly["severity"],
+                threshold=0.7
+            ))
+        
+        return emergencies
+    
+    async def handle_emergencies(self, emergencies: List[Emergency], telemetry):
+        """Handle emergency conditions"""
+        emergency_plan = self.generate_emergency_plan(emergencies)
+        
+        # Execute emergency actions immediately
+        for action in emergency_plan["immediate_actions"]:
+            # Bypass normal safety checks for emergencies
+            await self.actuator.execute_emergency(action)
+        
+        # Log emergency
+        await self.log_emergency(emergencies, emergency_plan)
+        
+        # Notify operators
+        await self.notify_operators(emergencies)
+```
+
+---
+
+PART 5: MONITORING & OPERATIONS
+
+5.1 Comprehensive Monitoring Stack
+
+Prometheus Configuration
+
+```yaml
+# prometheus.yml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'quenne-edge-nodes'
+    static_configs:
+      - targets: ['edge-node-1:9100', 'edge-node-2:9100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+      - source_labels: [__meta_rack]
+        target_label: rack
+    
+  - job_name: 'quenne-control-plane'
+    static_configs:
+      - targets: ['control-plane-1:9090', 'control-plane-2:9090']
+    metrics_path: '/metrics'
+    
+  - job_name: 'quenne-optimization'
+    static_configs:
+      - targets: ['optimizer-1:9091']
+    metrics_path: '/optimization/metrics'
+    
+  - job_name: 'quenne-digital-twin'
+    static_configs:
+      - targets: ['digital-twin-1:9092']
+    metrics_path: '/metrics'
+
+# Recording rules
+rule_files:
+  - /etc/prometheus/rules/quenne_alerts.yml
+  - /etc/prometheus/rules/quenne_recording.yml
+```
+
+Alert Rules
+
+```yaml
+# quenne_alerts.yml
+groups:
+  - name: quenne_thermal_alerts
+    rules:
+      - alert: CriticalTemperature
+        expr: quenne_temperature_celsius > 85
+        for: 1m
+        labels:
+          severity: critical
+          component: thermal
+        annotations:
+          summary: "Critical temperature detected"
+          description: "Temperature at {{ $labels.location }} is {{ $value }}°C"
+          
+      - alert: TemperatureRisingRapidly
+        expr: rate(quenne_temperature_celsius[5m]) > 5
+        for: 30s
+        labels:
+          severity: warning
+          component: thermal
+        annotations:
+          summary: "Rapid temperature rise"
+          description: "Temperature rising at {{ $labels.location }} at {{ $value }}°C/min"
+  
+  - name: quenne_power_alerts
+    rules:
+      - alert: PowerAnomalyDetected
+        expr: quenne_power_anomaly_score > 0.8
+        for: 10s
+        labels:
+          severity: critical
+          component: power
+        annotations:
+          summary: "Power anomaly detected"
+          description: "Neuromorphic anomaly score {{ $value }} at {{ $labels.circuit }}"
+          
+      - alert: PeakPowerApproaching
+        expr: quenne_power_watts / quenne_power_capacity_watts > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: power
+        annotations:
+          summary: "Approaching power capacity"
+          description: "Power usage at {{ $value | humanizePercentage }} of capacity"
+  
+  - name: quenne_optimization_alerts
+    rules:
+      - alert: OptimizationDegraded
+        expr: quenne_optimization_optimality_gap > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: optimization
+        annotations:
+          summary: "Optimization quality degraded"
+          description: "Optimality gap {{ $value | humanizePercentage }}"
+          
+      - alert: OptimizationTimeout
+        expr: increase(quenne_optimization_timeouts_total[1h]) > 10
+        labels:
+          severity: critical
+          component: optimization
+        annotations:
+          summary: "Excessive optimization timeouts"
+          description: "{{ $value }} timeouts in the last hour"
+```
+
+5.2 Dashboard Implementation
+
+Grafana Dashboard Configuration
+
+```json
+{
+  "dashboard": {
+    "title": "QUENNE Operations Dashboard",
+    "panels": [
+      {
+        "title": "Power Overview",
+        "type": "stat",
+        "targets": [{
+          "expr": "sum(quenne_power_watts) by (phase)",
+          "legendFormat": "Phase {{phase}}"
+        }],
+        "fieldConfig": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": null, "color": "green"},
+              {"value": 8000000, "color": "yellow"},
+              {"value": 9500000, "color": "red"}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Thermal Heat Map",
+        "type": "heatmap",
+        "targets": [{
+          "expr": "quenne_temperature_celsius",
+          "format": "heatmap"
+        }],
+        "options": {
+          "colorMode": "scheme",
+          "colorScheme": "interpolateSpectral",
+          "reverseYAxis": true
+        }
+      },
+      {
+        "title": "Optimization Performance",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "quenne_optimization_duration_seconds",
+            "legendFormat": "Duration"
+          },
+          {
+            "expr": "quenne_optimization_optimality_gap",
+            "legendFormat": "Optimality Gap"
+          }
+        ],
+        "fieldConfig": {
+          "unit": "s"
+        }
+      },
+      {
+        "title": "Anomaly Detection",
+        "type": "table",
+        "targets": [{
+          "expr": "topk(10, quenne_anomaly_score)",
+          "instant": true
+        }],
+        "options": {
+          "showHeader": true,
+          "sortBy": ["anomaly_score DESC"]
+        }
+      }
+    ],
+    "refresh": "5s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  }
+}
+```
+
+---
+
+PART 6: DEPLOYMENT CHECKLISTS
+
+6.1 Pre-Deployment Checklist
+
+```yaml
+pre_deployment_checks:
+  network:
+    - [ ] PTP time synchronization configured
+    - [ ] VLANs created for sensor network
+    - [ ] Firewall rules configured
+    - [ ] Sufficient bandwidth (10GbE minimum)
+    
+  power_infrastructure:
+    - [ ] Server-level power metering available
+    - [ ] PDU supports MODBUS/TCP
+    - [ ] UPS/generator monitoring interfaces
+    - [ ] Circuit mapping completed
+    
+  cooling_infrastructure:
+    - [ ] CRAC units support BACnet
+    - [ ] Variable speed fans confirmed
+    - [ ] Chilled water valves automated
+    - [ ] Economizer controls accessible
+    
+  compute_infrastructure:
+    - [ ] BMC/IPMI configured on all servers
+    - [ ] Redfish API enabled
+    - [ ] Kubernetes cluster ready
+    - [ ] Workload telemetry enabled
+    
+  safety:
+    - [ ] Emergency override procedures documented
+    - [ ] Manual control fallback tested
+    - [ ] Safety limits validated
+    - [ ] Staff trained on new system
+```
+
+6.2 Post-Deployment Validation
+
+```python
+# Automated Validation Suite
+def run_post_deployment_validation():
+    tests = [
+        {
+            "name": "telemetry_pipeline",
+            "procedure": validate_telemetry_pipeline,
+            "timeout": 300,
+            "pass_criteria": "All sensors reporting, latency <1s"
+        },
+        {
+            "name": "neuromorphic_detection",
+            "procedure": validate_neuromorphic_detection,
+            "timeout": 600,
+            "pass_criteria": "Anomaly detection latency <100ms, accuracy >95%"
+        },
+        {
+            "name": "optimization_performance",
+            "procedure": validate_optimization_performance,
+            "timeout": 900,
+            "pass_criteria": "Optimization completes in <500ms, gap <5%"
+        },
+        {
+            "name": "control_loop_stability",
+            "procedure": validate_control_loop_stability,
+            "timeout": 1800,
+            "pass_criteria": "No oscillations, settles within 5 minutes"
+        },
+        {
+            "name": "safety_systems",
+            "procedure": validate_safety_systems,
+            "timeout": 1200,
+            "pass_criteria": "All emergency stops functional, no single points of failure"
+        }
+    ]
+    
+    results = {}
+    for test in tests:
+        try:
+            result = asyncio.run(test["procedure"]())
+            results[test["name"]] = {
+                "status": "PASS" if result["passed"] else "FAIL",
+                "details": result
+            }
+        except Exception as e:
+            results[test["name"]] = {
+                "status": "ERROR",
+                "error": str(e)
+            }
+    
+    return generate_validation_report(results)
+```
+
+---
+
+PART 7: DISASTER RECOVERY & ROLLBACK
+
+7.1 Rollback Procedures
+
+```yaml
+rollback_procedures:
+  level1_software_rollback:
+    triggers:
+      - "Optimization causing thermal violations"
+      - "Control loop instability"
+      - "Performance degradation > 10%"
+    
+    procedure:
+      step1: "Disable QUENNE control actions"
+      step2: "Revert to baseline control algorithms"
+      step3: "Maintain telemetry collection"
+      step4: "Analyze root cause"
+      step5: "Deploy fixed version after validation"
+    
+    estimated_downtime: "5 minutes"
+    
+  level2_partial_rollback:
+    triggers:
+      - "Neuromorphic system causing false positives"
+      - "Sensor network issues"
+      - "Communication failures"
+    
+    procedure:
+      step1: "Disable affected subsystem"
+      step2: "Enable classical fallback"
+      step3: "Isolate and repair subsystem"
+      step4: "Gradual reintroduction"
+    
+    estimated_downtime: "15 minutes"
+    
+  level3_full_rollback:
+    triggers:
+      - "Critical safety issue"
+      - "Data corruption"
+      - "Security breach"
+    
+    procedure:
+      step1: "Shutdown QUENNE system"
+      step2: "Activate legacy BMS/control systems"
+      step3: "Preserve logs for analysis"
+      step4: "Full system audit"
+      step5: "Redesign and redeploy"
+    
+    estimated_downtime: "1 hour"
+```
+
+7.2 Backup and Recovery
+
+```bash
+#!/bin/bash
+# QUENNE Backup Script
+
+# Configuration
+BACKUP_DIR="/backup/quenne"
+RETENTION_DAYS=30
+ENCRYPTION_KEY="/etc/quenne/backup.key"
+
+# Backup function
+backup_quenne() {
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    BACKUP_PATH="$BACKUP_DIR/quenne_$TIMESTAMP"
+    
+    echo "Starting QUENNE backup at $TIMESTAMP"
+    
+    # 1. Backup databases
+    echo "Backing up InfluxDB..."
+    influx backup --compression gzip "$BACKUP_PATH/influxdb"
+    
+    # 2. Backup configuration
+    echo "Backing up configuration..."
+    kubectl get all -n quenne-system -o yaml > "$BACKUP_PATH/k8s_resources.yaml"
+    kubectl get configmaps -n quenne-system -o yaml > "$BACKUP_PATH/configmaps.yaml"
+    kubectl get secrets -n quenne-system -o yaml > "$BACKUP_PATH/secrets.yaml"
+    
+    # 3. Backup digital twin models
+    echo "Backing up digital twin..."
+    rsync -av /var/lib/quenne/digital-twin/ "$BACKUP_PATH/digital-twin/"
+    
+    # 4. Backup neuromorphic models
+    echo "Backing up neuromorphic models..."
+    cp -r /var/lib/quenne/snn-models "$BACKUP_PATH/snn-models"
+    
+    # 5. Backup optimization history
+    echo "Backing up optimization history..."
+    influx query -o quenne -t $INFLUX_TOKEN \
+        'SELECT * FROM "optimization_history"' \
+        --raw > "$BACKUP_PATH/optimization_history.csv"
+    
+    # Encrypt backup
+    echo "Encrypting backup..."
+    tar czf - "$BACKUP_PATH" | \
+        openssl enc -aes-256-cbc -salt -pass file:"$ENCRYPTION_KEY" \
+        -out "$BACKUP_PATH.tar.gz.enc"
+    
+    # Cleanup
+    rm -rf "$BACKUP_PATH"
+    
+    # Apply retention policy
+    find "$BACKUP_DIR" -name "*.enc" -mtime +$RETENTION_DAYS -delete
+    
+    echo "Backup completed: $BACKUP_PATH.tar.gz.enc"
+}
+
+# Recovery function
+recover_quenne() {
+    BACKUP_FILE=$1
+    
+    echo "Starting recovery from $BACKUP_FILE"
+    
+    # Stop QUENNE services
+    kubectl scale deployment --all --replicas=0 -n quenne-system
+    
+    # Decrypt backup
+    openssl enc -d -aes-256-cbc -pass file:"$ENCRYPTION_KEY" \
+        -in "$BACKUP_FILE" | tar xz
+    
+    # Restore databases
+    echo "Restoring InfluxDB..."
+    influx restore --full "$BACKUP_PATH/influxdb"
+    
+    # Restore Kubernetes resources
+    echo "Restoring Kubernetes resources..."
+    kubectl apply -f "$BACKUP_PATH/k8s_resources.yaml"
+    
+    # Restore configuration
+    echo "Restoring configuration..."
+    kubectl apply -f "$BACKUP_PATH/configmaps.yaml"
+    kubectl apply -f "$BACKUP_PATH/secrets.yaml"
+    
+    # Restore models
+    echo "Restoring models..."
+    cp -r "$BACKUP_PATH/digital-twin/" /var/lib/quenne/
+    cp -r "$BACKUP_PATH/snn-models/" /var/lib/quenne/
+    
+    # Start services
+    kubectl scale deployment --all --replicas=1 -n quenne-system
+    
+    echo "Recovery completed"
+}
+```
+
+---
+
+CONCLUSION
+
+This comprehensive implementation guide provides a complete technical blueprint for deploying the QUENNE system. The implementation follows these key principles:
+
+1. Incremental Deployment: Start with instrumentation, then add intelligence progressively
+2. Safety-First Approach: Multiple layers of safety and fallback mechanisms
+3. Performance Focus: Real-time requirements with millisecond latencies
+4. Scalability: Designed for data centers from 1MW to 100MW+
+5. Operational Excellence: Comprehensive monitoring, alerting, and recovery procedures
+
+Expected Timeline:
+
+· Weeks 1-8: Phase 1 - Instrumentation & Baseline
+· Weeks 9-20: Phase 2 - Neuromorphic Monitoring
+· Weeks 21-40: Phase 3 - Optimization & Actuation
+· Weeks 41-52: Phase 4 - Carbon-Aware Federation
+· Ongoing: Phase 5 - Continuous Improvement
+
+Success Metrics:
+
+· PUE reduction from 1.6 to 1.28 (-20%)
+· Compute energy reduction: 30%
+· Cooling energy reduction: 25%
+· Peak load reduction: 40%
+· ROI: 2-3 years typical
+
+This implementation represents a significant investment in data center intelligence but delivers transformative improvements in efficiency, sustainability, and operational excellence.
